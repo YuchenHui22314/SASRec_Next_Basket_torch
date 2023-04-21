@@ -74,9 +74,11 @@ if __name__ == '__main__':
             # how we adopt sasREC to NBR? we take the average of a basket as the basket embedding, which is counterpart to a "item" in SASREC
             ## TODO: concat?
             # labels are used to calculate the modified softmax loss
-            input_seqs, labels, pred_seqs = get_inputs_train(num_item, batch)
-            
-            train_loss.append(loss)
+            input_seqs, labels, _ = get_inputs_train(num_item, batch)
+            loss_type = args.loss.lower() 
+            loss, logits = model(input_seqs, labels, loss_type)
+            train_loss.append(loss.item())
+
         train_loss = np.mean(train_loss)
         print("epoch: %d, %.2fs" % (epoch, time.time() - t1))
         print("training loss: %.4f" % train_loss)

@@ -62,7 +62,7 @@ class SASRec(torch.nn.Module):
             # self.pos_sigmoid = torch.nn.Sigmoid()
             # self.neg_sigmoid = torch.nn.Sigmoid()
 
-    def seq2logits(self, input_seqs):
+    def seq2embed(self, input_seqs):
         '''
         log_seqs: (U, T) where U is user_num, T is maxlen. so this is purchase history of users
         (item Recommendation)
@@ -112,9 +112,9 @@ class SASRec(torch.nn.Module):
             # but still, if we offer attn_mask, this line seems to be redundant.
             seqs *=  ~timeline_mask_bool.unsqueeze(-1)
 
-        logits = self.last_layernorm(seqs) # (U, T, C) -> (U, -1, C)
+        output_embedding = self.last_layernorm(seqs) # (U, T, C) -> (U, -1, C)
 
-        return logits 
+        return output_embedding, ~timeline_mask_bool 
 
     #def forward(self, user_ids, log_seqs, pos_seqs )#neg_seqs): # for training        
         # log_seq: the purchase history of users 
@@ -132,10 +132,39 @@ class SASRec(torch.nn.Module):
 
         #return pos_logits, neg_logits # pos_pred, neg_pred
 
-    def forward(self, input_seqs):
+    def forward(self, input_seqs, labels, loss_type):
+        '''
+        labels = [
+        [1, 0,1,0], 
+        [0, 1,1,1]
+        ], dtype=torch.float32
+         
+        loss_type: "sigmoid" or "softmax"
+        '''
+        #output: [batch_size, seq_len, emb_dim] 
+        #loss mask: True if not padding, False if padding
+        ''' example:
+            mask = torch.tensor(
+                [ [False, True, True, True], [True, False, False, True] ], dtype=torch.bool)
+        '''
+        output, loss_mask = self.seq2embed(input_seqs)
+        logits = torch.matmul(output, self.item_emb.weight.transpose(0, 1))
+        loss_mask_logits = loss_mask.unsqueeze(-1).repeat(1, 1, logits.shape[-1])
 
-        logits = self.seq2logits(input_seqs)
-        return logits
+        if loss_type == "sigmoid":
+            criterion = torch.nn.BCEWithLogitsLoss(reduce=False)
+            loss= criterion(logits, labels)
+            loss = torch.sum(loss * loss_mask_logits)/ torch.sum(loss_mask_logits)
+            return loss, logits
+        
+        elif loss_type == "softmax":
+            criterion = torch.nn.CrossEntropyLoss(reduce=False)
+            assert len(logits.shape) == 3, "logits should be 3D"
+            loss= criterion(logits.transpose(1, 2), labels.transpose(1, 2))
+            loss = torch.sum(loss * loss_mask) / torch.sum(loss_mask)
+            return loss, logits
+
+
 
     def predict(self, user_ids, log_seqs, item_indices): # for inference
         log_feats = self.log2feats(log_seqs) # user_ids hasn't been used yet
