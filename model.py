@@ -7,7 +7,7 @@ class PointWiseFeedForward(torch.nn.Module):
 
         super(PointWiseFeedForward, self).__init__()
 
-        self.conv1 = torch.nn.Conv1d(hidden_units, hidden_units, kernel_size=1)
+        self.conv1 = torch.nn.Conv1d(hidden_units, hidden_units, kernel_size=1) # equivallent to nn.linear layer
         self.dropout1 = torch.nn.Dropout(p=dropout_rate) # dropout的位置已经成谜
         self.relu = torch.nn.ReLU() #不是gelu吗？
         self.conv2 = torch.nn.Conv1d(hidden_units, hidden_units, kernel_size=1)
@@ -33,8 +33,8 @@ class SASRec(torch.nn.Module):
 
         # TODO: loss += args.l2_emb for regularizing embedding vectors during training
         # https://stackoverflow.com/questions/42704283/adding-l1-l2-regularization-in-pytorch
-        self.item_emb = torch.nn.Embedding(self.item_num+1, args.hidden_units, padding_idx=0)
-        self.pos_emb = torch.nn.Embedding(args.maxlen, args.hidden_units) # TO IMPROVE
+        self.item_emb = torch.nn.Embedding(self.item_num+1, args.hidden_units, padding_idx=item_num)  # attention! padding_idx is item_num, not 0 in metro project
+        self.pos_emb = torch.nn.Embedding(args.maxlen, args.hidden_units) # TO IMPROVE how?
         self.emb_dropout = torch.nn.Dropout(p=args.dropout_rate)
 
         self.attention_layernorms = torch.nn.ModuleList() # to be Q for self-attention
@@ -62,58 +62,80 @@ class SASRec(torch.nn.Module):
             # self.pos_sigmoid = torch.nn.Sigmoid()
             # self.neg_sigmoid = torch.nn.Sigmoid()
 
-    def log2feats(self, log_seqs):
+    def seq2logits(self, input_seqs):
         '''
         log_seqs: (U, T) where U is user_num, T is maxlen. so this is purchase history of users
+        (item Recommendation)
+        log_seqs: (user_num, Basket_num, item_num) (next basket recommendation) 
         '''
+        # generate mask for log_seqs: cretiria: 1.size is (user_num, basket_num) 2.2. mask if the first item index is item_num. (this means the basket is a padded one)
+        input_seqs = torch.LongTensor(input_seqs).to(self.dev)
+        # timeline_mask的complement是要把padding的item/basket 全都置零。而其本身会喂给attention的key_padding_mask
+        #timeline_mask = torch.BoolTensor(log_seqs == 0).to(self.dev)
+        timeline_mask_bool = torch.where(input_seqs[:, :, 0] == self.item_num, True, False, device=self.dev) 
+        seqs = self.item_emb(input_seqs)
 
-        seqs = self.item_emb(torch.LongTensor(log_seqs).to(self.dev))
-        seqs *= self.item_emb.embedding_dim ** 0.5    # 必要性是什么？ 
-        positions = np.tile(np.array(range(log_seqs.shape[1])), [log_seqs.shape[0], 1])
+        # take average of item embeddings as basket embedding
+        input_seqs = torch.sum(input_seqs, dim = -2) / input_seqs.shape[2] 
+
+        seqs *= self.item_emb.embedding_dim ** 0.5  # necessity?   introduced by transformer paper, but not understood yet 
+
+        # positions is for positional enbedding index.
+        positions = np.tile(np.array(range(input_seqs.shape[1])), [input_seqs.shape[0], 1])
         seqs += self.pos_emb(torch.LongTensor(positions).to(self.dev))
-        seqs = self.emb_dropout(seqs)
 
-        timeline_mask = torch.BoolTensor(log_seqs == 0).to(self.dev)
-        seqs *= ~timeline_mask.unsqueeze(-1) 
-        # 因为你这里把原来是0的位置加了embedding就不是0了，所以要把原来是0的位置变回0
+        seqs = self.emb_dropout(seqs)
+        seqs *= ~timeline_mask_bool.unsqueeze(-1) 
         # broadcast in last dim 有必要？(有。因为变成embedding了。)
 
-        tl = seqs.shape[1] # time dim len for enforce causality
-        attention_mask = ~torch.tril(torch.ones((tl, tl), dtype=torch.bool, device=self.dev))
+        number_baskets = seqs.shape[1] 
+        # causal mask
+        attention_mask = ~torch.tril(torch.ones((number_baskets, number_baskets), dtype=torch.bool, device=self.dev))
 
         for i in range(len(self.attention_layers)):
             seqs = torch.transpose(seqs, 0, 1)
             Q = self.attention_layernorms[i](seqs)
-            mha_outputs, _ = self.attention_layers[i](Q, seqs, seqs, 
-                                            attn_mask=attention_mask)
-                                            # key_padding_mask=timeline_mask
-                                            # need_weights=False) this arg do not work?
+            mha_outputs, _ = self.attention_layers[i](
+                Q, seqs, seqs, 
+                attn_mask=attention_mask,
+                key_padding_mask=timeline_mask_bool
+                )
+                # key_padding_mask=timeline_mask
+                # need_weights=False) this arg do not work?
             seqs = Q + mha_outputs
             seqs = torch.transpose(seqs, 0, 1)
 
             seqs = self.forward_layernorms[i](seqs)
             seqs = self.forward_layers[i](seqs)
-            seqs *=  ~timeline_mask.unsqueeze(-1)
 
-        log_feats = self.last_layernorm(seqs) # (U, T, C) -> (U, -1, C)
+            # mask necessary? (yes...linear includes bias, lol, why am i so stupid)
+            # but still, if we offer attn_mask, this line seems to be redundant.
+            seqs *=  ~timeline_mask_bool.unsqueeze(-1)
 
-        return log_feats
+        logits = self.last_layernorm(seqs) # (U, T, C) -> (U, -1, C)
 
-    def forward(self, user_ids, log_seqs, pos_seqs, neg_seqs): # for training        
+        return logits 
+
+    #def forward(self, user_ids, log_seqs, pos_seqs )#neg_seqs): # for training        
         # log_seq: the purchase history of users 
         # pos_seq: the next item to be purchased by users
-        log_feats = self.log2feats(log_seqs) # user_ids hasn't been used yet
+        # log_feats = self.log2feats(log_seqs) # user_ids hasn't been used yet
 
-        pos_embs = self.item_emb(torch.LongTensor(pos_seqs).to(self.dev))
-        neg_embs = self.item_emb(torch.LongTensor(neg_seqs).to(self.dev))
+        # pos_embs = self.item_emb(torch.LongTensor(pos_seqs).to(self.dev))
+        # neg_embs = self.item_emb(torch.LongTensor(neg_seqs).to(self.dev))
 
-        pos_logits = (log_feats * pos_embs).sum(dim=-1)
-        neg_logits = (log_feats * neg_embs).sum(dim=-1)
+        # pos_logits = (log_feats * pos_embs).sum(dim=-1)
+        # neg_logits = (log_feats * neg_embs).sum(dim=-1)
 
         # pos_pred = self.pos_sigmoid(pos_logits)
         # neg_pred = self.neg_sigmoid(neg_logits)
 
-        return pos_logits, neg_logits # pos_pred, neg_pred
+        #return pos_logits, neg_logits # pos_pred, neg_pred
+
+    def forward(self, input_seqs):
+
+        logits = self.seq2logits(input_seqs)
+        return logits
 
     def predict(self, user_ids, log_seqs, item_indices): # for inference
         log_feats = self.log2feats(log_seqs) # user_ids hasn't been used yet

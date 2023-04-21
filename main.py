@@ -2,7 +2,7 @@ import os
 import time
 import torch
 import argparse
-import dataset
+from dataset import *
 
 from model import SASRec
 from utils import *
@@ -49,8 +49,12 @@ f.close()
 #-------------------------------------
 
 if __name__ == '__main__':
-    # global dataset
-    
+
+    batches, num_user, num_item, train_dict, validate_dict, test_dict= load_dataset_batches(args)  
+
+    # train
+    model = SASRec(num_user, num_item, args).to(args.device) # no ReLU activation in original SASRec implementation?
+
     for name, param in model.named_parameters():
         try:
             torch.nn.init.xavier_normal_(param.data)
@@ -59,7 +63,33 @@ if __name__ == '__main__':
     
     # this fails embedding init 'Embedding' object has no attribute 'dim'
     # model.apply(torch.nn.init.xavier_uniform_)
+
+    model.train() # enable model training
+    for epoch in range(1, args.num_epoch+1):
+        
+        t1 = time.time()
+        train_loss = list()
+        for batch in batches:
+            # batch = [num_user, max_seq_len, max_basket_len]
+            # how we adopt sasREC to NBR? we take the average of a basket as the basket embedding, which is counterpart to a "item" in SASREC
+            ## TODO: concat?
+            # labels are used to calculate the modified softmax loss
+            input_seqs, labels, pred_seqs = get_inputs_train(num_item, batch)
+            
+            train_loss.append(loss)
+        train_loss = np.mean(train_loss)
+        print("epoch: %d, %.2fs" % (epoch, time.time() - t1))
+        print("training loss: %.4f" % train_loss)
+
+
+    for name, param in model.named_parameters():
+        try:
+            torch.nn.init.xavier_normal_(param.data)
+        except:
+            pass # just ignore those failed init layers
     
+    # this fails embedding init 'Embedding' object has no attribute 'dim'
+    # model.apply(torch.nn.init.xavier_uniform_)
     model.train() # enable model training
     
     epoch_start_idx = 1
