@@ -34,7 +34,7 @@ class SASRec(torch.nn.Module):
         # TODO: loss += args.l2_emb for regularizing embedding vectors during training
         # https://stackoverflow.com/questions/42704283/adding-l1-l2-regularization-in-pytorch
         self.item_emb = torch.nn.Embedding(self.item_num+1, args.hidden_units, padding_idx=item_num)  # attention! padding_idx is item_num, not 0 in metro project
-        self.pos_emb = torch.nn.Embedding(args.maxlen, args.hidden_units) # TO IMPROVE how?
+        self.pos_emb = torch.nn.Embedding(args.max_seq_len, args.hidden_units) # TO IMPROVE how?
         self.emb_dropout = torch.nn.Dropout(p=args.dropout_rate)
 
         self.attention_layernorms = torch.nn.ModuleList() # to be Q for self-attention
@@ -48,9 +48,11 @@ class SASRec(torch.nn.Module):
             new_attn_layernorm = torch.nn.LayerNorm(args.hidden_units, eps=1e-8)
             self.attention_layernorms.append(new_attn_layernorm)
 
-            new_attn_layer =  torch.nn.MultiheadAttention(args.hidden_units,
-                                                            args.num_heads,
-                                                            args.dropout_rate)
+            new_attn_layer =  torch.nn.MultiheadAttention(
+                args.hidden_units,
+                args.num_heads,
+                args.dropout_rate)
+
             self.attention_layers.append(new_attn_layer)
 
             new_fwd_layernorm = torch.nn.LayerNorm(args.hidden_units, eps=1e-8)
@@ -72,11 +74,11 @@ class SASRec(torch.nn.Module):
         input_seqs = torch.LongTensor(input_seqs).to(self.dev)
         # timeline_mask的complement是要把padding的item/basket 全都置零。而其本身会喂给attention的key_padding_mask
         #timeline_mask = torch.BoolTensor(log_seqs == 0).to(self.dev)
-        timeline_mask_bool = torch.where(input_seqs[:, :, 0] == self.item_num, True, False, device=self.dev) 
+        timeline_mask_bool = torch.where(input_seqs[:, :, 0] == self.item_num, True, False).to(self.dev)  
         seqs = self.item_emb(input_seqs)
 
         # take average of item embeddings as basket embedding
-        input_seqs = torch.sum(input_seqs, dim = -2) / input_seqs.shape[2] 
+        seqs = torch.sum(seqs, dim = -2) / input_seqs.shape[2] 
 
         seqs *= self.item_emb.embedding_dim ** 0.5  # necessity?   introduced by transformer paper, but not understood yet 
 
@@ -116,21 +118,6 @@ class SASRec(torch.nn.Module):
 
         return output_embedding, ~timeline_mask_bool 
 
-    #def forward(self, user_ids, log_seqs, pos_seqs )#neg_seqs): # for training        
-        # log_seq: the purchase history of users 
-        # pos_seq: the next item to be purchased by users
-        # log_feats = self.log2feats(log_seqs) # user_ids hasn't been used yet
-
-        # pos_embs = self.item_emb(torch.LongTensor(pos_seqs).to(self.dev))
-        # neg_embs = self.item_emb(torch.LongTensor(neg_seqs).to(self.dev))
-
-        # pos_logits = (log_feats * pos_embs).sum(dim=-1)
-        # neg_logits = (log_feats * neg_embs).sum(dim=-1)
-
-        # pos_pred = self.pos_sigmoid(pos_logits)
-        # neg_pred = self.neg_sigmoid(neg_logits)
-
-        #return pos_logits, neg_logits # pos_pred, neg_pred
 
     def forward(self, input_seqs, labels, loss_type):
         '''
@@ -160,21 +147,19 @@ class SASRec(torch.nn.Module):
         elif loss_type == "softmax":
             criterion = torch.nn.CrossEntropyLoss(reduce=False)
             assert len(logits.shape) == 3, "logits should be 3D"
+            labels = torch.tensor(labels,dtype=torch.float32).to(self.dev)
+            # label should be floating point, not long
             loss= criterion(logits.transpose(1, 2), labels.transpose(1, 2))
             loss = torch.sum(loss * loss_mask) / torch.sum(loss_mask)
             return loss, logits
 
 
 
-    def predict(self, user_ids, log_seqs, item_indices): # for inference
-        log_feats = self.log2feats(log_seqs) # user_ids hasn't been used yet
+    def predict(self, input_seqs): # for inference
+        self.eval()
+        output_embedding , _ = self.seq2embed(input_seqs)
+        logits = torch.matmul(output_embedding, self.item_emb.weight.transpose(0, 1))
+        # take the last embedding as the prediction
+        logits = logits[:, -1, :] # (U, num_items)
 
-        final_feat = log_feats[:, -1, :] # only use last QKV classifier, a waste
-
-        item_embs = self.item_emb(torch.LongTensor(item_indices).to(self.dev)) # (U, I, C)
-
-        logits = item_embs.matmul(final_feat.unsqueeze(-1)).squeeze(-1)
-
-        # preds = self.pos_sigmoid(logits) # rank same item list for different users
-
-        return logits # preds # (U, I)
+        return logits # preds # (U, num_items)

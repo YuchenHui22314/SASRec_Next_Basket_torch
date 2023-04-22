@@ -1,5 +1,7 @@
 import numpy as np
 from utils import *
+import csv
+import torch
 
 def get_sequences(train_dict, validate_dict, num_item, max_seq_len, max_basket_len):
     sequences = list()
@@ -33,15 +35,37 @@ def get_inputs_train(num_item, batch):
     input_seq = batch[:, :-2, :]  # batch: [batch_size, train[0]...train[-2] train[-1] validate[], max_basket_len]
     # 需要预测的是这个。和train seq比向右移动了一位
     pred_seq = batch[:, 1:-1, :]
-    labels = list()
-    for row in np.reshape(pred_seq, [-1, pred_seq.shape[-1]]):
-        # 拆成一个个basket，然后为每一个basket生成一个label 向量，
-        # 其中basket里面的item对应的位置为1，其他为0
-        label_ = np.zeros(shape=num_item+1, dtype=np.float32)
-        label_[row] = 1.0
-        labels.append(label_[:-1])
-    labels = np.array(labels)
-    return input_seq, labels, pred_seq 
+    # Create a mask tensor to ignore padding item 5
+    # Create a mask array to ignore padding item 5
+    mask = (pred_seq != 5)
+
+    # Convert array a to one-hot encoding
+    one_hot_a = np.eye(num_item + 1, dtype= np.int8)[pred_seq]
+
+    # Apply mask to one-hot array
+    one_hot_a = one_hot_a * mask[..., None]
+
+    # Sum one-hot array along the second axis to get multi-hot representation
+    multi_hot_a = one_hot_a.sum(axis=2)
+    # pred_seq = torch.tensor(pred_seq).long()
+    # mask = (pred_seq != 5).long()
+    # # Convert tensor a to one-hot encoding
+    # one_hot_pred = torch.nn.functional.one_hot(pred_seq, num_classes = num_item + 1)
+    # # Apply mask to one-hot tensor
+    # one_hot_pred = one_hot_pred * mask.unsqueeze(-1)
+    # # Sum one-hot tensor along the second axis to get multi-hot representation
+    # multi_hot_pred = one_hot_pred.sum(dim=2)
+
+
+    # labels = list()
+    # for row in np.reshape(pred_seq, [-1, pred_seq.shape[-1]]):
+    #     # 拆成一个个basket，然后为每一个basket生成一个label 向量，
+    #     # 其中basket里面的item对应的位置为1，其他为0
+    #     label_ = np.zeros(shape=num_item+1, dtype=np.float32)
+    #     label_[row] = 1.0
+    #     labels.append(label_[:-1])
+    # labels = np.array(labels)
+    return input_seq, multi_hot_a, pred_seq 
 
 def load_dataset_batches(args):
     #### load dataset 
@@ -56,6 +80,8 @@ def load_dataset_batches(args):
     # how many basket does each user have, whey + validate dict?
     seq_len = [len(train_dict[u] + [validate_dict[u]]) for u in train_dict]
     print("max seq len: %d, min seq len: %d, avg seq len: %.4f, med seq len: %.4f" % (np.max(seq_len), np.min(seq_len), np.mean(seq_len), np.median(seq_len)))
+
+
 
     # how may items does each basket have 
     basket_len = [len(b) for u in train_dict for b in train_dict[u] + [validate_dict[u]]]
@@ -77,20 +103,16 @@ def load_dataset_batches(args):
     # split to batches
     batches = get_batches(sequences, args.batch_size) #(random_shuffle)
 
-    return batches, num_user, num_item, train_dict, validate_dict, test_dict
+    return batches, num_user, num_item, train_dict, validate_dict, test_dict, sequences
 
-def get_feed_dict_validate(model, batch):
-    feed_dict = dict()
-    feed_dict[model.dropout_rate] = 0.0
-    feed_dict[model.input_seq] = batch[:, 1:-1, :]
-    return feed_dict
+def get_feed_dict_validate( batch):
+    input_seq = batch[:, 1:-1, :]
+    return input_seq 
 
 
-def get_feed_dict_test(model, batch):
-    feed_dict = dict()
-    feed_dict[model.dropout_rate] = 0.0
-    feed_dict[model.input_seq] = batch[:, 2:, :]
-    return feed_dict
+def get_feed_dict_test( batch):
+    input_seq = batch[:, 2:, :]
+    return input_seq
 
 
 def get_top_K_index(pred_scores, K):
@@ -99,3 +121,26 @@ def get_top_K_index(pred_scores, K):
     arr_ind_argsort = np.argsort(arr_ind)[np.arange(len(pred_scores)), ::-1]
     batch_pred_list = ind[np.arange(len(pred_scores))[:, None], arr_ind_argsort]
     return batch_pred_list.tolist()
+
+
+def save_result(args, result_valid, result_test):
+    ndcg_10 = list(np.array(result_valid)[:, 6])
+    ndcg_10_max = max(ndcg_10)
+    result_report = result_test[ndcg_10.index(ndcg_10_max)]
+
+    result_test_array = np.array(result_test)
+    result_max = ["max", max(result_test_array[:, 1]), max(result_test_array[:, 2]), max(result_test_array[:, 3]), max(result_test_array[:, 4]), max(result_test_array[:, 5]), max(result_test_array[:, 6])]
+
+    args_dict = vars(args)
+    filename = ""
+    for arg in args_dict:
+        filename += str(args_dict[arg]) + "_"
+    with open(filename + ".csv", "w", newline="") as f:
+        writer = csv.writer(f)
+        writer.writerow(["epoch", "Precision@1", "Recall@1", "NDCG@1", "Precision@10", "Recall@10", "NDCG@10"])
+        for line in result_test:
+            writer.writerow(line)
+        writer.writerow(result_report)
+        writer.writerow(result_max)
+        for arg in args_dict:
+            writer.writerow(["", arg, args_dict[arg]] + [""] * (len(line) - 3))

@@ -1,15 +1,23 @@
 import torch
 import numpy as np
+from datetime import datetime
 
 embedding = torch.nn.Embedding(5 + 1, 2, padding_idx=5)
 print("embedding.weight", embedding.weight)
+# now we have a tensor of shape(batch_size, seq_len, basket_size) a
+# where each element is the item id, ranging from 0 to num_class (inclusive), here we have 0 ,1 ,2, 3, 4, 5 as possible item id 
 a = [
     [[5,5,5],[3,2,3],[1,4,5]],
     [[5,5,5],[5,5,5],[1,4,5]]
 ]
+# we want to get a tensor of shape(batch_size, seq_len, class_num)
+# where class_num is 6 here. so for each basket, we want to get a multi-hot vector of length 6, where the element at position indicated by the last dimension of a is 1, and the rest are 0. However we will ignore the padding item 5, so the element at position 5 will be 0. for example, for a[0][0], we want to get [0,0,0,0,0,0], for a[0][1], we want to get [0,0,1,1,0,0], for a[0][2], we want to get [0,1,0,0,1,0]
+
+# please generate code for this.
 
 a = torch.LongTensor(a) 
-mask = torch.where(a[:, :, 0] == 5, False, True)
+mask = torch.where(a[:, :, 0] == 5, False, True).to("cpu")
+print("the mask is", mask)
 
 a_emb = embedding(a)
 print(a_emb.shape)
@@ -110,3 +118,7 @@ m2 = torch.randn(2, 2)
 
 product = torch.matmul(m1.weight, m2)
 print(product)
+
+now = datetime.now()
+dt_string = now.strftime("%Y_%d_%m_%H_%M_%S")
+print("date and time =", dt_string)

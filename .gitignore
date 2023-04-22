@@ -4,3 +4,4 @@ __pycache__/
 metro_02.npy
 test.py
 SASRec_tf.py
+test_multihot.py
