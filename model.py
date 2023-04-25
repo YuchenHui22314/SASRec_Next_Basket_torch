@@ -30,6 +30,7 @@ class SASRec(torch.nn.Module):
         self.user_num = user_num
         self.item_num = item_num
         self.dev = args.device
+        self.hidden_units = args.hidden_units
 
         # TODO: loss += args.l2_emb for regularizing embedding vectors during training
         # https://stackoverflow.com/questions/42704283/adding-l1-l2-regularization-in-pytorch
@@ -64,12 +65,15 @@ class SASRec(torch.nn.Module):
             # self.pos_sigmoid = torch.nn.Sigmoid()
             # self.neg_sigmoid = torch.nn.Sigmoid()
 
-    def seq2embed(self, input_seqs):
+    def seq2embed(self, input_seqs, actual_basket_item_num):
         '''
         log_seqs: (U, T) where U is user_num, T is maxlen. so this is purchase history of users
         (item Recommendation)
         log_seqs: (user_num, Basket_num, item_num) (next basket recommendation) 
         '''
+        # assert the vector of padding_idx is all zeros
+        assert (self.item_emb.weight.data[self.item_num] == torch.zeros(self.hidden_units)).all(), "the vector of padding_idx is not all zeros, damn it!"
+
         # generate mask for log_seqs: cretiria: 1.size is (user_num, basket_num) 2.2. mask if the first item index is item_num. (this means the basket is a padded one)
         input_seqs = torch.LongTensor(input_seqs).to(self.dev)
         # timeline_mask的complement是要把padding的item/basket 全都置零。而其本身会喂给attention的key_padding_mask
@@ -78,7 +82,7 @@ class SASRec(torch.nn.Module):
         seqs = self.item_emb(input_seqs)
 
         # take average of item embeddings as basket embedding
-        seqs = torch.sum(seqs, dim = -2) / input_seqs.shape[2] 
+        seqs = torch.sum(seqs, dim = -2) / actual_basket_item_num.unsqueeze(-1) 
 
         seqs *= self.item_emb.embedding_dim ** 0.5  # necessity?   introduced by transformer paper, but not understood yet 
 
@@ -96,15 +100,14 @@ class SASRec(torch.nn.Module):
 
         for i in range(len(self.attention_layers)):
             seqs = torch.transpose(seqs, 0, 1)
-            Q = self.attention_layernorms[i](seqs)
+            Q_K_V = self.attention_layernorms[i](seqs)
             mha_outputs, _ = self.attention_layers[i](
-                Q, seqs, seqs, 
+                Q_K_V, Q_K_V, Q_K_V, 
                 attn_mask=attention_mask,
                 key_padding_mask=timeline_mask_bool
                 )
-                # key_padding_mask=timeline_mask
                 # need_weights=False) this arg do not work?
-            seqs = Q + mha_outputs
+            seqs = Q_K_V + mha_outputs
             seqs = torch.transpose(seqs, 0, 1)
 
             seqs = self.forward_layernorms[i](seqs)
@@ -134,7 +137,12 @@ class SASRec(torch.nn.Module):
             mask = torch.tensor(
                 [ [False, True, True, True], [True, False, False, True] ], dtype=torch.bool)
         '''
-        output, loss_mask = self.seq2embed(input_seqs)
+        # actual basket item num: [user_num, basket_num]
+        actual_basket_item_num = torch.tensor(np.sum(labels, axis = -1))
+        # set all zero value of actual_basket_item_num to 1, to avoid dividing by zero
+        actual_basket_item_num = torch.where(actual_basket_item_num == 0, 1, actual_basket_item_num)
+
+        output, loss_mask = self.seq2embed(input_seqs, actual_basket_item_num)
         logits = torch.matmul(output, self.item_emb.weight.transpose(0, 1))
         loss_mask_logits = loss_mask.unsqueeze(-1).repeat(1, 1, logits.shape[-1])
 

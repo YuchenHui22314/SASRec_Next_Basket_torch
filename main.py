@@ -66,7 +66,10 @@ if __name__ == '__main__':
     # this fails embedding init 'Embedding' object has no attribute 'dim'
     # model.apply(torch.nn.init.xavier_uniform_)
 
+    # set the padding index (model.num_item) to zero, so that the padding index will not affect the loss
+    model.item_emb.weight.data[model.item_num].fill_(0)
     model.train() # enable model training
+    
 
     result_train = list()
     result_validate = list()
@@ -76,6 +79,7 @@ if __name__ == '__main__':
         
         t1 = time.time()
         train_loss = list()
+        print("num of batches: %d" % len(batches))
         for batch in batches:
             # batch = [num_user, max_seq_len, max_basket_len]
             # how we adopt sasREC to NBR? we take the average of a basket as the basket embedding, which is counterpart to a "item" in SASREC
@@ -84,6 +88,7 @@ if __name__ == '__main__':
             input_seqs, labels, _ = get_inputs_train(num_item, batch)
             loss_type = args.loss.lower() 
             loss, logits = model(input_seqs, labels, loss_type)
+            print(loss)
             train_loss.append(loss.item())
 
         mean_epoch_loss = np.mean(train_loss)

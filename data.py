@@ -35,9 +35,8 @@ def get_inputs_train(num_item, batch):
     input_seq = batch[:, :-2, :]  # batch: [batch_size, train[0]...train[-2] train[-1] validate[], max_basket_len]
     # 需要预测的是这个。和train seq比向右移动了一位
     pred_seq = batch[:, 1:-1, :]
-    # Create a mask tensor to ignore padding item 5
-    # Create a mask array to ignore padding item 5
-    mask = (pred_seq != 5)
+    # Create a mask array to ignore padding item (num_item + 1)
+    mask = (pred_seq != num_item )
 
     # Convert array a to one-hot encoding
     one_hot_a = np.eye(num_item + 1, dtype= np.int8)[pred_seq]

@@ -122,3 +122,10 @@ print(product)
 now = datetime.now()
 dt_string = now.strftime("%Y_%d_%m_%H_%M_%S")
 print("date and time =", dt_string)
+
+###################3 test embedding ###############
+print("shuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuuu")
+emb = torch.nn.Embedding(3, 2)
+print(emb.weight)
+emb.weight.data[0].fill_(0)
+print(emb.weight)
