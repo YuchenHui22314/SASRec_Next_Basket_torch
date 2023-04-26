@@ -143,11 +143,6 @@ if __name__ == '__main__':
         os.makedirs('log')
     # save the training , validation and testing results as pickle file
 
-    # result_train = list()
-    # result_validate = list()
-    # result_test = list()
-
-    # get day and time
     now = datetime.now()
     dt_string = now.strftime("_%Y_%d_%m_%H_%M_%S")
     with open('log/' + args.dataset + '_train' + dt_string +'.pkl', 'wb') as f:
@@ -156,3 +151,12 @@ if __name__ == '__main__':
         pickle.dump(result_validate, f)
     with open('log/' + args.dataset + '_test' + dt_string +'.pkl', 'wb') as f:
         pickle.dump(result_test, f)
+
+    # colab
+    if os.path.exists("/content/assignment"):
+        with open('/content/assignment/' + args.dataset + '_train' + dt_string +'.pkl', 'wb') as f:
+            pickle.dump(result_train, f)
+        with open('/content/assignment/' + args.dataset + '_validate' + dt_string +'.pkl', 'wb') as f:
+            pickle.dump(result_validate, f)
+        with open('/content/assignment/' + args.dataset + '_test' + dt_string +'.pkl', 'wb') as f:
+            pickle.dump(result_test, f)

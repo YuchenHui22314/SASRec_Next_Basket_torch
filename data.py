@@ -141,25 +141,3 @@ def get_top_K_index(pred_scores, K):
     batch_pred_list = ind[np.arange(len(pred_scores))[:, None], arr_ind_argsort]
     return batch_pred_list.tolist()
 
-
-def save_result(args, result_valid, result_test):
-    ndcg_10 = list(np.array(result_valid)[:, 6])
-    ndcg_10_max = max(ndcg_10)
-    result_report = result_test[ndcg_10.index(ndcg_10_max)]
-
-    result_test_array = np.array(result_test)
-    result_max = ["max", max(result_test_array[:, 1]), max(result_test_array[:, 2]), max(result_test_array[:, 3]), max(result_test_array[:, 4]), max(result_test_array[:, 5]), max(result_test_array[:, 6])]
-
-    args_dict = vars(args)
-    filename = ""
-    for arg in args_dict:
-        filename += str(args_dict[arg]) + "_"
-    with open(filename + ".csv", "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["epoch", "Precision@1", "Recall@1", "NDCG@1", "Precision@10", "Recall@10", "NDCG@10"])
-        for line in result_test:
-            writer.writerow(line)
-        writer.writerow(result_report)
-        writer.writerow(result_max)
-        for arg in args_dict:
-            writer.writerow(["", arg, args_dict[arg]] + [""] * (len(line) - 3))

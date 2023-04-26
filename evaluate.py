@@ -35,7 +35,7 @@ def save_result(args, result_valid, result_test):
     filename = ""
     for arg in args_dict:
         filename += str(args_dict[arg]) + "_"
-    with open("./log/" + filename + ".csv", "w", newline="") as f:
+    with open("/content/assignment/" + filename + ".csv", "w", newline="") as f:
         writer = csv.writer(f)
         writer.writerow(["epoch", "Precision@1", "Recall@1", "NDCG@1", "Precision@10", "Recall@10", "NDCG@10"])
         for line in result_test:
