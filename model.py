@@ -157,7 +157,7 @@ class SASRec(torch.nn.Module):
         # actual basket item num: [user_num, basket_num]
         actual_basket_item_num = torch.tensor(np.sum(labels, axis = -1))
         # set all zero value of actual_basket_item_num to 1, to avoid dividing by zero
-        actual_basket_item_num = torch.where(actual_basket_item_num == 0, 1, actual_basket_item_num)
+        actual_basket_item_num = torch.where(actual_basket_item_num == 0, 1, actual_basket_item_num).to(self.dev)
 
         output, loss_mask = self.seq2embed(input_seqs, actual_basket_item_num)
         logits = torch.matmul(output, self.item_emb.weight.transpose(0, 1))
