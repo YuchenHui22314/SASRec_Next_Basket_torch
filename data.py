@@ -30,30 +30,33 @@ def get_batches(sequences, batch_size):
     return batches
 
 
-def get_inputs_train(num_item, batch):
+def get_inputs_train(num_item, batch, device):
     # 取到倒数第二个train basket做input，因为要predict最后一个basket
     input_seq = batch[:, :-2, :]  # batch: [batch_size, train[0]...train[-2] train[-1] validate[], max_basket_len]
     # 需要预测的是这个。和train seq比向右移动了一位
     pred_seq = batch[:, 1:-1, :]
-    # Create a mask array to ignore padding item (num_item + 1)
-    mask = (pred_seq != num_item )
 
-    # Convert array a to one-hot encoding
-    one_hot_a = np.eye(num_item + 1, dtype= np.int8)[pred_seq]
+    if device == 'cuda':
+        pred_seq = torch.tensor(pred_seq).long().to(device)
+        mask = (pred_seq != 5).long().to(device)
+        # Convert tensor a to one-hot encoding
+        one_hot_pred = torch.nn.functional.one_hot(pred_seq, num_classes = num_item + 1).to(device)
+        # Apply mask to one-hot tensor
+        one_hot_pred = one_hot_pred * mask.unsqueeze(-1)
+        # Sum one-hot tensor along the second axis to get multi-hot representation
+        multi_hot_a = one_hot_pred.sum(dim=2)
+        #Create a mask array to ignore padding item (num_item + 1)
+    elif device == 'cpu':
+        mask = (pred_seq != num_item )
+        # Convert array a to one-hot encoding
+        one_hot_a = np.eye(num_item + 1, dtype= np.int8)[pred_seq]
+        # Apply mask to one-hot array
+        one_hot_a = one_hot_a * mask[..., None]
+        # Sum one-hot array along the second axis to get multi-hot representation
+        multi_hot_a = one_hot_a.sum(axis=2)
+    else:
+        raise ValueError("device must be 'cuda' or 'cpu'")
 
-    # Apply mask to one-hot array
-    one_hot_a = one_hot_a * mask[..., None]
-
-    # Sum one-hot array along the second axis to get multi-hot representation
-    multi_hot_a = one_hot_a.sum(axis=2)
-    # pred_seq = torch.tensor(pred_seq).long()
-    # mask = (pred_seq != 5).long()
-    # # Convert tensor a to one-hot encoding
-    # one_hot_pred = torch.nn.functional.one_hot(pred_seq, num_classes = num_item + 1)
-    # # Apply mask to one-hot tensor
-    # one_hot_pred = one_hot_pred * mask.unsqueeze(-1)
-    # # Sum one-hot tensor along the second axis to get multi-hot representation
-    # multi_hot_pred = one_hot_pred.sum(dim=2)
 
 
     # labels = list()
@@ -64,6 +67,7 @@ def get_inputs_train(num_item, batch):
     #     label_[row] = 1.0
     #     labels.append(label_[:-1])
     # labels = np.array(labels)
+
     return input_seq, multi_hot_a, pred_seq 
 
 def load_dataset_batches(args):

@@ -106,6 +106,10 @@ class SASRec(torch.nn.Module):
         number_baskets = seqs.shape[1] 
         # causal mask
         attention_mask = torch.tril(torch.zeros((number_baskets, number_baskets),device=self.dev).fill_(-2e15), diagonal=0)# (T, T)
+        # Be careful: we can only use float mask instead of byte mask here.
+        # if we use byte mask and perform softmax operation on it later,
+        # the output of softmax will be nan, for the following reason:
+
         '''
             tensor([[-2.0000e+15,  0.0000e+00,  0.0000e+00],
                     [-2.0000e+15, -2.0000e+15,  0.0000e+00],
@@ -168,7 +172,10 @@ class SASRec(torch.nn.Module):
         elif loss_type == "softmax":
             criterion = torch.nn.CrossEntropyLoss(reduce=False)
             assert len(logits.shape) == 3, "logits should be 3D"
-            labels = torch.tensor(labels,dtype=torch.float32).to(self.dev)
+            if self.dev == "cuda":
+                # else, no need to convert to tensor.
+                # this implemntation is to adapte to my low memory pc.
+                labels = torch.tensor(labels,dtype=torch.float32).to(self.dev)
             # label should be floating point, not long
             loss= criterion(logits.transpose(1, 2), labels.transpose(1, 2))
             loss = torch.sum(loss * loss_mask) / torch.sum(loss_mask)
