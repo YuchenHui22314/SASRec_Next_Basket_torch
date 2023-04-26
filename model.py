@@ -105,7 +105,7 @@ class SASRec(torch.nn.Module):
 
         number_baskets = seqs.shape[1] 
         # causal mask
-        attention_mask = torch.tril(torch.zeros((number_baskets, number_baskets) ,device=self.dev).fill_(-2e15), diagonal=0)# (T, T)
+        attention_mask = torch.tril(torch.zeros((number_baskets, number_baskets),device=self.dev).fill_(-2e15), diagonal=0)# (T, T)
         '''
             tensor([[-2.0000e+15,  0.0000e+00,  0.0000e+00],
                     [-2.0000e+15, -2.0000e+15,  0.0000e+00],
