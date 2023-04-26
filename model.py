@@ -172,10 +172,7 @@ class SASRec(torch.nn.Module):
         elif loss_type == "softmax":
             criterion = torch.nn.CrossEntropyLoss(reduce=False)
             assert len(logits.shape) == 3, "logits should be 3D"
-            if self.dev == "cuda":
-                # else, no need to convert to tensor.
-                # this implemntation is to adapte to my low memory pc.
-                labels = torch.tensor(labels,dtype=torch.float32).to(self.dev)
+            labels = torch.tensor(labels,dtype=torch.float32).to(self.dev)
             # label should be floating point, not long
             loss= criterion(logits.transpose(1, 2), labels.transpose(1, 2))
             loss = torch.sum(loss * loss_mask) / torch.sum(loss_mask)
