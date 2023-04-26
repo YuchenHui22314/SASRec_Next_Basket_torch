@@ -2,6 +2,8 @@ import numpy as np
 from utils import *
 import csv
 import torch
+import time
+np.random.seed(2023)
 
 def get_sequences(train_dict, validate_dict, num_item, max_seq_len, max_basket_len):
     sequences = list()
@@ -30,7 +32,7 @@ def get_batches(sequences, batch_size):
     return batches
 
 
-def get_inputs_train(num_item, batch, device):
+def get_inputs_train(num_item, batch):
     # 取到倒数第二个train basket做input，因为要predict最后一个basket
     input_seq = batch[:, :-2, :]  # batch: [batch_size, train[0]...train[-2] train[-1] validate[], max_basket_len]
     # 需要预测的是这个。和train seq比向右移动了一位
@@ -48,37 +50,42 @@ def get_inputs_train(num_item, batch, device):
     #     print("the multi_hot_a is", multi_hot_a)
     #     #Create a mask array to ignore padding item (num_item + 1)
     # elif device == 'cpu':
-
-    mask = (pred_seq != num_item )
-    # Convert array a to one-hot encoding
-    one_hot_a = np.eye(num_item + 1, dtype= np.int8)[pred_seq]
-    # Apply mask to one-hot array
-    one_hot_a = one_hot_a * mask[..., None]
-    # Sum one-hot array along the second axis to get multi-hot representation
-    multi_hot_a = one_hot_a.sum(axis=2)
+    # time1 =time.time()
+    # mask = (pred_seq != num_item )
+    # # Convert array a to one-hot encoding
+    # one_hot_a = np.eye(num_item + 1, dtype= np.int8)[pred_seq]
+    # # Apply mask to one-hot array
+    # one_hot_a = one_hot_a * mask[..., None]
+    # # Sum one-hot array along the second axis to get multi-hot representation
+    # multi_hot_a = one_hot_a.sum(axis=2)
+    # print("the shape of multi_hot_a is", multi_hot_a.shape)
+    # time2 = time.time()
+    # print("the time is", time2-time1)
 
     # else:
     #     raise ValueError("device must be 'cuda' or 'cpu'")
 
+    labels_pred = list()
+    for row in np.reshape(pred_seq, [-1, pred_seq.shape[-1]]):
+        # 拆成一个个basket，然后为每一个basket生成一个label 向量，
+        # 其中basket里面的item对应的位置为1，其他为0
+        label_ = np.zeros(shape=num_item+1, dtype=np.float32)
+        label_[row] = 1.0
+        label_[-1] = 0.0 # the last item is padding item
+        # labels.append(label_[:-1])
+        labels_pred.append(label_)
+    labels_pred = np.array(labels_pred) #
+    labels_pred = np.reshape(labels_pred, [batch.shape[0], -1, num_item+1])
 
 
-    # labels = list()
-    # for row in np.reshape(pred_seq, [-1, pred_seq.shape[-1]]):
-    #     # 拆成一个个basket，然后为每一个basket生成一个label 向量，
-    #     # 其中basket里面的item对应的位置为1，其他为0
-    #     label_ = np.zeros(shape=num_item+1, dtype=np.float32)
-    #     label_[row] = 1.0
-    #     labels.append(label_[:-1])
-    # labels = np.array(labels)
-
-    return input_seq, multi_hot_a, pred_seq 
+    return input_seq, labels_pred, pred_seq 
 
 def load_dataset_batches(args):
     #### load dataset 
     # validate_dict and test_dict :
     # one user one basket
     # if a user has less than 3 basket, then no validate_dict nor test_dict
-    [train_dict, validate_dict, test_dict, num_user, num_item] = np.load("metro_02.npy", allow_pickle=True)
+    [train_dict, validate_dict, test_dict, num_user, num_item] = np.load(f"{args.dataset}.npy", allow_pickle=True)
 
     # print number of users and items
     print("num_user: %d, num_item: %d" % (num_user, num_item))

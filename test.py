@@ -135,3 +135,8 @@ a = softmax(torch.tensor([-torch.inf,  -2e31]))
 print(a)
 attention_mask = torch.tril(torch.zeros((3, 3) ).fill_(-2e15), diagonal=0)# (T, T)
 print("attention_mask\n", attention_mask)
+
+a = torch.zeros(2, 3, 4)
+b = torch.ones(6, 4)
+
+print("a*b is", a*b)

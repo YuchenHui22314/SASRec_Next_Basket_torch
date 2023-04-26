@@ -65,7 +65,7 @@ class SASRec(torch.nn.Module):
             # self.pos_sigmoid = torch.nn.Sigmoid()
             # self.neg_sigmoid = torch.nn.Sigmoid()
 
-    def seq2embed(self, input_seqs, actual_basket_item_num):
+    def seq2embed(self, input_seqs):
         '''
         log_seqs: (U, T) where U is user_num, T is maxlen. so this is purchase history of users
         (item Recommendation)
@@ -91,6 +91,9 @@ class SASRec(torch.nn.Module):
         '''
 
         # take average of item embeddings as basket embedding
+        temp_mask = torch.where(input_seqs == self.item_num, 0, 1).to(self.dev) # (U, T)
+        actual_basket_item_num = torch.sum(temp_mask, dim = -1) # (U, )
+        actual_basket_item_num = torch.where(actual_basket_item_num == 0, 1, actual_basket_item_num).to(self.dev)
         seqs = torch.sum(seqs, dim = -2) / actual_basket_item_num.unsqueeze(-1) 
 
         seqs *= self.item_emb.embedding_dim ** 0.5  # necessity?   introduced by transformer paper, but not understood yet 
@@ -154,12 +157,8 @@ class SASRec(torch.nn.Module):
             mask = torch.tensor(
                 [ [False, True, True, True], [True, False, False, True] ], dtype=torch.bool)
         '''
-        # actual basket item num: [user_num, basket_num]
-        actual_basket_item_num = torch.tensor(np.sum(labels, axis = -1))
-        # set all zero value of actual_basket_item_num to 1, to avoid dividing by zero
-        actual_basket_item_num = torch.where(actual_basket_item_num == 0, 1, actual_basket_item_num).to(self.dev)
 
-        output, loss_mask = self.seq2embed(input_seqs, actual_basket_item_num)
+        output, loss_mask = self.seq2embed(input_seqs)
         logits = torch.matmul(output, self.item_emb.weight.transpose(0, 1))
         loss_mask_logits = loss_mask.unsqueeze(-1).repeat(1, 1, logits.shape[-1])
 

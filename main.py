@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default="metro_02")
 parser.add_argument('--train_dir', default = "lg")
 
-parser.add_argument('--device', default='cuda', type=str)
+parser.add_argument('--device', default='cpu', type=str)
 parser.add_argument('--inference_only', default=False, type=str2bool)
 parser.add_argument('--state_dict_path', default=None, type=str)
 
@@ -49,8 +49,14 @@ with open(os.path.join(args.dataset + '_' + args.train_dir, 'args.txt'), 'w') as
     f.write('\n'.join([str(k) + ',' + str(v) for k, v in sorted(vars(args).items(), key=lambda x: x[0])]))
 f.close()
 #-------------------------------------
-
+# one can also remove this if __name__ == '__main__': 
 if __name__ == '__main__':
+
+    # set the random seed manually for reproducibility.
+    np.random.seed(args.random_seed)
+    torch.manual_seed(args.random_seed)
+    if torch.cuda.is_available():
+        torch.cuda.manual_seed_all(args.random_seed)
 
     batches, num_user, num_item, train_dict, validate_dict, test_dict, sequences= load_dataset_batches(args)  
 
@@ -85,7 +91,7 @@ if __name__ == '__main__':
             # how we adopt sasREC to NBR? we take the average of a basket as the basket embedding, which is counterpart to a "item" in SASREC
             ## TODO: concat?
             # labels are used to calculate the modified softmax loss
-            input_seqs, labels, _ = get_inputs_train(num_item, batch, args.device)
+            input_seqs, labels, _ = get_inputs_train(num_item, batch)
             loss_type = args.loss.lower() 
             loss, logits = model(input_seqs, labels, loss_type)
             print(loss)
