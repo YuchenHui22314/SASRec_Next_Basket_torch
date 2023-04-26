@@ -72,7 +72,7 @@ class SASRec(torch.nn.Module):
         log_seqs: (user_num, Basket_num, item_num) (next basket recommendation) 
         '''
         # assert the vector of padding_idx is all zeros
-        assert (self.item_emb.weight.data[self.item_num] == torch.zeros(self.hidden_units)).to(self.dev).all(), "the vector of padding_idx is not all zeros, damn it!"
+        assert (self.item_emb.weight.data[self.item_num] == torch.zeros(self.hidden_units)).all().to(self.dev), "the vector of padding_idx is not all zeros, damn it!"
 
         # generate mask for log_seqs: cretiria: 1.size is (user_num, basket_num) 2.2. mask if the first item index is item_num. (this means the basket is a padded one)
         input_seqs = torch.LongTensor(input_seqs).to(self.dev)
