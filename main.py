@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default="metro_02")
 parser.add_argument('--train_dir', default = "lg")
 
-parser.add_argument('--device', default='cpu', type=str)
+parser.add_argument('--device', default='cuda', type=str)
 parser.add_argument('--inference_only', default=False, type=str2bool)
 parser.add_argument('--state_dict_path', default=None, type=str)
 
@@ -85,7 +85,7 @@ if __name__ == '__main__':
             # how we adopt sasREC to NBR? we take the average of a basket as the basket embedding, which is counterpart to a "item" in SASREC
             ## TODO: concat?
             # labels are used to calculate the modified softmax loss
-            input_seqs, labels, _ = get_inputs_train(num_item, batch)
+            input_seqs, labels, _ = get_inputs_train(num_item, batch, args.device)
             loss_type = args.loss.lower() 
             loss, logits = model(input_seqs, labels, loss_type)
             print(loss)
