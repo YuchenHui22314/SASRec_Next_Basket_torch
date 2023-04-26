@@ -45,6 +45,7 @@ def get_inputs_train(num_item, batch, device):
         one_hot_pred = one_hot_pred * mask.unsqueeze(-1)
         # Sum one-hot tensor along the second axis to get multi-hot representation
         multi_hot_a = one_hot_pred.sum(dim=2)
+        print("the multi_hot_a is", multi_hot_a)
         #Create a mask array to ignore padding item (num_item + 1)
     elif device == 'cpu':
         mask = (pred_seq != num_item )
