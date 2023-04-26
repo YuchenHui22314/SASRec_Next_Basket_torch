@@ -31,6 +31,8 @@ parser.add_argument('--l2_emb', default=0.0, type=float)
 parser.add_argument('--batch_size', default=128, type=int)
 parser.add_argument('--num_epoch', default=2, type=int)
 parser.add_argument("--random_seed", type=int, default=2023)
+parser.add_argument("--N", type=int, default=1)
+parser.add_argument("--K", type=int, default=20)
 
 
 # model specific hyperparameters
