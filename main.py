@@ -7,7 +7,7 @@ import pickle
 from datetime import datetime
 from data import *
 from model import SASRec
-from utils import *
+from evaluate import *
 
 def str2bool(s):
     if s not in {'false', 'true'}:
@@ -23,6 +23,7 @@ parser.add_argument('--train_dir', default = "lg")
 parser.add_argument('--device', default='cpu', type=str)
 parser.add_argument('--inference_only', default=False, type=str2bool)
 parser.add_argument('--state_dict_path', default=None, type=str)
+parser.add_argument('--debug', default= True, type=str2bool, help='if true, use 10% dataset')
 
 # common hyperparameters
 parser.add_argument('--hidden_units', default=5, type=int)
@@ -96,7 +97,7 @@ if __name__ == '__main__':
             input_seqs, labels, _ = get_inputs_train(num_item, batch)
             loss_type = args.loss.lower() 
             loss, logits = model(input_seqs, labels, loss_type)
-            print(loss)
+            #print(loss)
             train_loss.append(loss.item())
 
         mean_epoch_loss = np.mean(train_loss)

@@ -86,6 +86,12 @@ def load_dataset_batches(args):
     # one user one basket
     # if a user has less than 3 basket, then no validate_dict nor test_dict
     [train_dict, validate_dict, test_dict, num_user, num_item] = np.load(f"{args.dataset}.npy", allow_pickle=True)
+    if args.debug:
+        num_user = 500 
+        # take the first 500 users
+        train_dict = {u: train_dict[u] for u in list(train_dict.keys())[:num_user]}
+        validate_dict = {u: validate_dict[u] for u in list(validate_dict.keys())[:num_user]}
+        test_dict = {u: test_dict[u] for u in list(test_dict.keys())[:num_user]}
 
     # print number of users and items
     print("num_user: %d, num_item: %d" % (num_user, num_item))

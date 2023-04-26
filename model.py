@@ -181,9 +181,10 @@ class SASRec(torch.nn.Module):
 
     def predict(self, input_seqs): # for inference
         self.eval()
-        output_embedding , _ = self.seq2embed(input_seqs)
-        logits = torch.matmul(output_embedding, self.item_emb.weight.transpose(0, 1))
-        # take the last embedding as the prediction
-        logits = logits[:, -1, :] # (U, num_items)
+        with torch.no_grad():
+            output_embedding , _ = self.seq2embed(input_seqs)
+            logits = torch.matmul(output_embedding, self.item_emb.weight.transpose(0, 1))
+            # take the last embedding as the prediction
+            logits = logits[:, -1, :] # (U, num_items)
 
-        return logits # preds # (U, num_items)
+        return logits.numpy() # preds # (U, num_items)

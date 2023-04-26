@@ -1,5 +1,8 @@
+K,20
+N,1
 batch_size,128
 dataset,metro_02
+debug,True
 device,cpu
 dropout_rate,0.5
 hidden_units,5
