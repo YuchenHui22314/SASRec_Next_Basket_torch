@@ -80,6 +80,15 @@ class SASRec(torch.nn.Module):
         #timeline_mask = torch.BoolTensor(log_seqs == 0).to(self.dev)
         timeline_mask_bool = torch.where(input_seqs[:, :, 0] == self.item_num, True, False).to(self.dev)  
         seqs = self.item_emb(input_seqs)
+        '''
+        tensor(
+            [
+                [ True, True,....,True, False]
+                [ True, True,....,False,False]
+            .....
+                ]
+        )
+        '''
 
         # take average of item embeddings as basket embedding
         seqs = torch.sum(seqs, dim = -2) / actual_basket_item_num.unsqueeze(-1) 
@@ -96,15 +105,19 @@ class SASRec(torch.nn.Module):
 
         number_baskets = seqs.shape[1] 
         # causal mask
-        attention_mask = ~torch.tril(torch.ones((number_baskets, number_baskets), dtype=torch.bool, device=self.dev))
-
+        attention_mask = torch.tril(torch.zeros((number_baskets, number_baskets) ,device=self.dev).fill_(-2e15), diagonal=0)# (T, T)
+        '''
+            tensor([[-2.0000e+15,  0.0000e+00,  0.0000e+00],
+                    [-2.0000e+15, -2.0000e+15,  0.0000e+00],
+                    [-2.0000e+15, -2.0000e+15, -2.0000e+15]])
+        '''
         for i in range(len(self.attention_layers)):
             seqs = torch.transpose(seqs, 0, 1)
             Q_K_V = self.attention_layernorms[i](seqs)
             mha_outputs, _ = self.attention_layers[i](
                 Q_K_V, Q_K_V, Q_K_V, 
                 attn_mask=attention_mask,
-                key_padding_mask=timeline_mask_bool
+                key_padding_mask=timeline_mask_bool # doesn't work, because
                 )
                 # need_weights=False) this arg do not work?
             seqs = Q_K_V + mha_outputs
