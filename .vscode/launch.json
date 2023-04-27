@@ -14,7 +14,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["--debug","true", "--hidden_units", "30", "--device", "cpu", "--loss", "sigmoid" ]
+            "args": ["--debug","true", "--hidden_units", "64", "--device", "cpu", "--loss", "softmax" ]
         }
     ]
 }
