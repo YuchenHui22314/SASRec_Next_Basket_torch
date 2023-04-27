@@ -89,6 +89,7 @@ if __name__ == '__main__':
         t1 = time.time()
         train_loss = list()
         for batch in batches:
+            adam_optimizer.zero_grad()
             # batch = [num_user, max_seq_len, max_basket_len]
             # how we adopt sasREC to NBR? we take the average of a basket as the basket embedding, which is counterpart to a "item" in SASREC
             ## TODO: concat?
@@ -99,9 +100,10 @@ if __name__ == '__main__':
             # regularization
             for param in model.parameters():
                 loss += args.l2_emb * torch.norm(param) 
-            adam_optimizer.zero_grad()
+            # !!!!!!!!!!!!!! --------------------
             loss.backward()
             adam_optimizer.step()
+            # !!!!!!!!!!!!!--------------------
             #print(loss)
             train_loss.append(loss.item())
 
@@ -113,6 +115,7 @@ if __name__ == '__main__':
         # validation and testing
 
         if epoch == 1 or epoch % args.N == 0:
+            model.eval()
             # for validation
             #如果num_user大于batch_size就相当于取前batch size
             #个user，如果num_user < batch_size, 就是取所有的

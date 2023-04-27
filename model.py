@@ -128,7 +128,7 @@ class SASRec(torch.nn.Module):
             mha_outputs, _ = self.attention_layers[i](
                 Q_K_V, Q_K_V, Q_K_V, 
                 attn_mask=attention_mask,
-                key_padding_mask=timeline_mask_float, # doesn't work, because
+                #key_padding_mask=timeline_mask_float, # doesn't work, because
                 # is_causal=True, 
                 )
                 # need_weights=False) this arg do not work?
@@ -188,7 +188,6 @@ class SASRec(torch.nn.Module):
 
 
     def predict(self, input_seqs): # for inference
-        self.eval()
         with torch.no_grad():
             output_embedding , _ = self.seq2embed(input_seqs)
             logits = torch.matmul(output_embedding, self.item_emb.weight.transpose(0, 1))
