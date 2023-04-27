@@ -85,7 +85,7 @@ if __name__ == '__main__':
     result_test = list()
 
     for epoch in range(1, args.num_epoch + 1):
-        
+        model.train() 
         t1 = time.time()
         train_loss = list()
         for batch in batches:
