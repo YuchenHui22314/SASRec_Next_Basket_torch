@@ -125,6 +125,7 @@ class SASRec(object):
         with tf.name_scope("train"):
             input_seq_emb = tf.reshape(seq_emb, [tf.shape(self.input_seq)[0] * self.max_seq_len, self.num_factor])  # [batch_size * max_seq_len, num_factor]
             logits = tf.matmul(input_seq_emb, tf.transpose(item_embedding_))  # [batch_size * max_seq_len, num_item]
+            print(logits.shape)
             target = tf.reshape(tf.reduce_sum(tf.cast(tf.not_equal(self.input_seq, self.num_item), tf.float32), 2), [tf.shape(self.input_seq)[0] * self.max_seq_len])  # [batch_size * max_seq_len]
             target = target / (target + 1e-24)
             if args.loss == "sigmoid":
