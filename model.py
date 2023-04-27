@@ -127,7 +127,7 @@ class SASRec(torch.nn.Module):
             mha_outputs, _ = self.attention_layers[i](
                 Q_K_V, Q_K_V, Q_K_V, 
                 attn_mask=attention_mask,
-                key_padding_mask=timeline_mask_float # doesn't work, because
+                #key_padding_mask=timeline_mask_float # doesn't work, because
                 )
                 # need_weights=False) this arg do not work?
             seqs = Q_K_V + mha_outputs

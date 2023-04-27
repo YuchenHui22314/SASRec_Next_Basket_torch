@@ -5,6 +5,7 @@
     "version": "0.2.0",
     "configurations": [
 
+
         {
             "name": "Python: Current File",
             "type": "python",
@@ -12,7 +13,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["--debug","true", "--hidden_units", "5", "--device", "cpu" ]
+            "args": ["--debug","true", "--hidden_units", "30", "--device", "cpu" ]
         }
     ]
 }
