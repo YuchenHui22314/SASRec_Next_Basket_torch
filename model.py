@@ -115,13 +115,15 @@ class SASRec(torch.nn.Module):
         # the output of softmax will be nan, for the following reason:
 
         '''
-            tensor([[-2.0000e+15,  0.0000e+00,  0.0000e+00],
-                    [-2.0000e+15, -2.0000e+15,  0.0000e+00],
-                    [-2.0000e+15, -2.0000e+15, -2.0000e+15]])
+            tensor([[0,  -2e15, -2e15, -2e15, -2e15],
+                    [0,  0,  -2e15, -2e15, -2e15],
+                    [0,  0,  0,  -2e15, -2e15],
+                    [0,  0,  0,  0,  -2e15],   
+                    [0,  0,  0,  0,  0]])
         '''
         for i in range(len(self.attention_layers)):
-            seqs = torch.transpose(seqs, 0, 1)
             Q_K_V = self.attention_layernorms[i](seqs)
+            Q_K_V = torch.transpose(Q_K_V, 0, 1)
             mha_outputs, _ = self.attention_layers[i](
                 Q_K_V, Q_K_V, Q_K_V, 
                 attn_mask=attention_mask,
