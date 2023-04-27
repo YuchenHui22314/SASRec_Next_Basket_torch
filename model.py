@@ -163,13 +163,13 @@ class SASRec(torch.nn.Module):
         loss_mask_logits = loss_mask.unsqueeze(-1).repeat(1, 1, logits.shape[-1])
 
         if loss_type == "sigmoid":
-            criterion = torch.nn.BCEWithLogitsLoss(reduce=False)
+            criterion = torch.nn.BCEWithLogitsLoss(reduction = "none")
             loss= criterion(logits, labels)
             loss = torch.sum(loss * loss_mask_logits)/ torch.sum(loss_mask_logits)
             return loss, logits
         
         elif loss_type == "softmax":
-            criterion = torch.nn.CrossEntropyLoss(reduce=False)
+            criterion = torch.nn.CrossEntropyLoss(reduction = "none")
             assert len(logits.shape) == 3, "logits should be 3D"
             labels = torch.tensor(labels,dtype=torch.float32).to(self.dev)
             # label should be floating point, not long

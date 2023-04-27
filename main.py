@@ -17,20 +17,20 @@ def str2bool(s):
 parser = argparse.ArgumentParser()
 
 # setting 
-parser.add_argument('--dataset', default="metro_02")
+parser.add_argument('--dataset', default="metro_01")
 parser.add_argument('--train_dir', default = "lg")
 
-parser.add_argument('--device', default='cpu', type=str)
+parser.add_argument('--device', default='gpu', type=str)
 parser.add_argument('--inference_only', default=False, type=str2bool)
 parser.add_argument('--state_dict_path', default=None, type=str)
-parser.add_argument('--debug', default= True, type=str2bool, help='if true, use 10% dataset')
+parser.add_argument('--debug', default= False, type=str2bool, help='if true, use 10% dataset')
 
 # common hyperparameters
-parser.add_argument('--hidden_units', default=5, type=int)
-parser.add_argument('--lr', default=0.001, type=float)
-parser.add_argument('--l2_emb', default=0.0, type=float)
-parser.add_argument('--batch_size', default=128, type=int)
-parser.add_argument('--num_epoch', default=2, type=int)
+parser.add_argument('--hidden_units', default=64, type=int)
+parser.add_argument('--lr', default = 1e-3, type=float)
+parser.add_argument('--l2_emb', default=1e-4, type=float)
+parser.add_argument('--batch_size', default=256, type=int)
+parser.add_argument('--num_epoch', default=50, type=int)
 parser.add_argument("--random_seed", type=int, default=2023)
 parser.add_argument("--N", type=int, default=1)
 parser.add_argument("--K", type=int, default=20)
@@ -38,17 +38,17 @@ parser.add_argument("--K", type=int, default=20)
 
 # model specific hyperparameters
 #parser.add_argument('--maxlen', default=50, type=int)
-parser.add_argument('--num_blocks', default=2, type=int)
+parser.add_argument('--num_blocks', default=1, type=int)
 parser.add_argument('--num_heads', default=1, type=int)
-parser.add_argument('--dropout_rate', default=0.5, type=float)
+parser.add_argument('--dropout_rate', default=0.1, type=float)
 parser.add_argument("--loss", type=str, default="softmax")  # {sigmoid, softmax}
 
 args = parser.parse_args()
 # save model hyperparameters and settings --------------------------------------
-if not os.path.isdir(args.dataset + '_' + args.train_dir):
-    os.makedirs(args.dataset + '_' + args.train_dir)
+if not os.path.isdir("/content/assignment/" + args.dataset + '_' + args.train_dir):
+    os.makedirs("/content/assignment/" +args.dataset + '_' + args.train_dir)
 
-with open(os.path.join(args.dataset + '_' + args.train_dir, 'args.txt'), 'w') as f:
+with open(os.path.join("/content/assignment/" +args.dataset + '_' + args.train_dir, 'args.txt'), 'w') as f:
     f.write('\n'.join([str(k) + ',' + str(v) for k, v in sorted(vars(args).items(), key=lambda x: x[0])]))
 f.close()
 #-------------------------------------
