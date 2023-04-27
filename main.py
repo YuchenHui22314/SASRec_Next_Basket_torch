@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--dataset', default="metro_01")
 parser.add_argument('--train_dir', default = "lg")
 
-parser.add_argument('--device', default='gpu', type=str)
+parser.add_argument('--device', default='cuda', type=str)
 parser.add_argument('--inference_only', default=False, type=str2bool)
 parser.add_argument('--state_dict_path', default=None, type=str)
 parser.add_argument('--debug', default= False, type=str2bool, help='if true, use 10% dataset')
