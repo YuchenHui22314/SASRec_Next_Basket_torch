@@ -99,6 +99,7 @@ if __name__ == '__main__':
             # regularization
             for param in model.parameters():
                 loss += args.l2_emb * torch.norm(param) 
+            adam_optimizer.zero_grad()
             loss.backward()
             adam_optimizer.step()
             #print(loss)
