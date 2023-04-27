@@ -17,7 +17,7 @@ def str2bool(s):
 parser = argparse.ArgumentParser()
 
 # setting 
-parser.add_argument('--dataset', default="metro_01")
+parser.add_argument('--dataset', default="metro_02")
 parser.add_argument('--train_dir', default = "lg")
 
 parser.add_argument('--device', default='cuda', type=str)
@@ -78,7 +78,7 @@ if __name__ == '__main__':
     # set the padding index (model.num_item) to zero, so that the padding index will not affect the loss
     model.item_emb.weight.data[model.item_num].fill_(0)
     model.train() # enable model training
-    
+    adam_optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.98))
 
     result_train = list()
     result_validate = list()
@@ -88,7 +88,6 @@ if __name__ == '__main__':
         
         t1 = time.time()
         train_loss = list()
-        print("num of batches: %d" % len(batches))
         for batch in batches:
             # batch = [num_user, max_seq_len, max_basket_len]
             # how we adopt sasREC to NBR? we take the average of a basket as the basket embedding, which is counterpart to a "item" in SASREC
@@ -97,6 +96,11 @@ if __name__ == '__main__':
             input_seqs, labels, _ = get_inputs_train(num_item, batch)
             loss_type = args.loss.lower() 
             loss, logits = model(input_seqs, labels, loss_type)
+            # regularization
+            for param in model.parameters():
+                loss += args.l2_emb * torch.norm(param) 
+            loss.backward()
+            adam_optimizer.step()
             #print(loss)
             train_loss.append(loss.item())
 

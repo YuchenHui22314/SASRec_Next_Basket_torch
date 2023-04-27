@@ -218,7 +218,7 @@ def get_top_K_index(pred_scores, K):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="SASRec")
-    parser.add_argument("--dataset", type=str, default="metro_02") # metro_yogurt_02
+    parser.add_argument("--dataset", type=str, default="metro_01") # metro_yogurt_02
     # common hyperparameters
     parser.add_argument("--num_factor", type=int, default=64)
     parser.add_argument("--lr", type=float, default=1e-3)
