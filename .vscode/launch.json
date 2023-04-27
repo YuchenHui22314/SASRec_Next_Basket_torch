@@ -6,6 +6,7 @@
     "configurations": [
 
 
+
         {
             "name": "Python: Current File",
             "type": "python",
@@ -13,7 +14,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["--debug","true", "--hidden_units", "30", "--device", "cpu" ]
+            "args": ["--debug","true", "--hidden_units", "30", "--device", "cpu", "--loss", "sigmoid" ]
         }
     ]
 }

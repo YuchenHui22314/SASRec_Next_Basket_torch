@@ -136,7 +136,20 @@ print(a)
 attention_mask = torch.tril(torch.zeros((3, 3) ).fill_(-2e15), diagonal=0)# (T, T)
 print("attention_mask\n", attention_mask)
 
-a = torch.zeros(2, 3, 4)
-b = torch.ones(6, 4)
 
-print("a*b is", a*b)
+previous = torch.tensor([[[1,2,3], [4,5,6], [7,8,9]], [[10,11,12], [13,14,15], [16,17,18]]])
+print(previous)
+medium = previous.reshape(-1, 3)
+print(medium)
+after = medium.reshape(2, -1, 3)
+print(after)
+
+# what if previous medium after are all numpy array?
+
+previous = np.array([[[1,2,3], [4,5,6], [7,8,9]], [[10,11,12], [13,14,15], [16,17,18]]])
+print(previous)
+medium = previous.reshape(-1, 3)
+print(medium)
+after = medium.reshape(2, -1, 3)
+print(after)
+print(-2e15)

@@ -122,19 +122,23 @@ class SASRec(torch.nn.Module):
                     [0,  0,  0,  0,  0]])
         '''
         for i in range(len(self.attention_layers)):
-            Q_K_V = self.attention_layernorms[i](seqs)
-            Q_K_V = torch.transpose(Q_K_V, 0, 1)
+            s = seqs
+            seqs = self.attention_layernorms[i](seqs)
+            Q_K_V = torch.transpose(seqs, 0, 1)
             mha_outputs, _ = self.attention_layers[i](
                 Q_K_V, Q_K_V, Q_K_V, 
-                attn_mask=attention_mask,
+                #attn_mask=attention_mask,
                 #key_padding_mask=timeline_mask_float # doesn't work, because
+                is_causal = True,
                 )
                 # need_weights=False) this arg do not work?
-            seqs = Q_K_V + mha_outputs
-            seqs = torch.transpose(seqs, 0, 1)
+            mha_outputs = torch.transpose(mha_outputs, 0, 1)
+            seqs = s + mha_outputs
 
-            seqs = self.forward_layernorms[i](seqs)
-            seqs = self.forward_layers[i](seqs)
+            sequences = self.forward_layernorms[i](seqs)
+            sequences = self.forward_layers[i](sequences)
+
+            seqs = seqs + sequences
 
             # mask necessary? (yes...linear includes bias, lol, why am i so stupid)
             # but still, if we offer attn_mask, this line seems to be redundant.
@@ -167,6 +171,7 @@ class SASRec(torch.nn.Module):
 
         if loss_type == "sigmoid":
             criterion = torch.nn.BCEWithLogitsLoss(reduction = "none")
+            labels = torch.tensor(labels,dtype=torch.float32).to(self.dev)
             loss= criterion(logits, labels)
             loss = torch.sum(loss * loss_mask_logits)/ torch.sum(loss_mask_logits)
             return loss, logits
