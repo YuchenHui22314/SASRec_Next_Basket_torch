@@ -79,6 +79,8 @@ class SASRec(torch.nn.Module):
         # timeline_mask的complement是要把padding的item/basket 全都置零。而其本身会喂给attention的key_padding_mask
         #timeline_mask = torch.BoolTensor(log_seqs == 0).to(self.dev)
         timeline_mask_bool = torch.where(input_seqs[:, :, 0] == self.item_num, True, False).to(self.dev)  
+        #attention_mask = torch.tril(torch.zeros((number_baskets, number_baskets),device=self.dev).fill_(-2e15), diagonal=0)# (T, T)
+        timeline_mask_float = torch.where(timeline_mask_bool, -1*(2e15), 0).to(self.dev) # (U, T) 
         seqs = self.item_emb(input_seqs)
         '''
         tensor(
@@ -124,7 +126,7 @@ class SASRec(torch.nn.Module):
             mha_outputs, _ = self.attention_layers[i](
                 Q_K_V, Q_K_V, Q_K_V, 
                 attn_mask=attention_mask,
-                key_padding_mask=timeline_mask_bool # doesn't work, because
+                key_padding_mask=timeline_mask_float # doesn't work, because
                 )
                 # need_weights=False) this arg do not work?
             seqs = Q_K_V + mha_outputs
