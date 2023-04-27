@@ -166,12 +166,12 @@ class SASRec(torch.nn.Module):
         '''
 
         output, loss_mask = self.seq2embed(input_seqs)
-        logits = torch.matmul(output, self.item_emb.weight.transpose(0, 1))
+        logits = torch.matmul(output, self.item_emb.weight[:-1].transpose(0, 1))
         loss_mask_logits = loss_mask.unsqueeze(-1).repeat(1, 1, logits.shape[-1])
 
         if loss_type == "sigmoid":
             criterion = torch.nn.BCEWithLogitsLoss(reduction = "none")
-            labels = torch.tensor(labels,dtype=torch.float32).to(self.dev)
+            labels = torch.tensor(labels,dtype=torch.float32).to(self.dev)[:,:, :-1]
             loss= criterion(logits, labels)
             loss = torch.sum(loss * loss_mask_logits)/ torch.sum(loss_mask_logits)
             return loss, logits
@@ -179,7 +179,8 @@ class SASRec(torch.nn.Module):
         elif loss_type == "softmax":
             criterion = torch.nn.CrossEntropyLoss(reduction = "none")
             assert len(logits.shape) == 3, "logits should be 3D"
-            labels = torch.tensor(labels,dtype=torch.float32).to(self.dev)
+            # remove the last element of each multihot vector, because it is for the padding
+            labels = torch.tensor(labels,dtype=torch.float32).to(self.dev)[:,:, :-1]
             # label should be floating point, not long
             loss= criterion(logits.transpose(1, 2), labels.transpose(1, 2))
             loss = torch.sum(loss * loss_mask) / torch.sum(loss_mask)
