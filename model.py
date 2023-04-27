@@ -127,9 +127,9 @@ class SASRec(torch.nn.Module):
             Q_K_V = torch.transpose(seqs, 0, 1)
             mha_outputs, _ = self.attention_layers[i](
                 Q_K_V, Q_K_V, Q_K_V, 
-                #attn_mask=attention_mask,
-                #key_padding_mask=timeline_mask_float # doesn't work, because
-                is_causal = True,
+                attn_mask=attention_mask,
+                key_padding_mask=timeline_mask_float, # doesn't work, because
+                # is_causal=True, 
                 )
                 # need_weights=False) this arg do not work?
             mha_outputs = torch.transpose(mha_outputs, 0, 1)
