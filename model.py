@@ -187,4 +187,4 @@ class SASRec(torch.nn.Module):
             # take the last embedding as the prediction
             logits = logits[:, -1, :] # (U, num_items)
 
-        return logits.numpy() # preds # (U, num_items)
+        return logits.cpu().numpy() # preds # (U, num_items)
