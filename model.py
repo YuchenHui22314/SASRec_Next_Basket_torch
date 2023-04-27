@@ -79,7 +79,6 @@ class SASRec(torch.nn.Module):
         # timeline_mask的complement是要把padding的item/basket 全都置零。而其本身会喂给attention的key_padding_mask
         #timeline_mask = torch.BoolTensor(log_seqs == 0).to(self.dev)
         timeline_mask_bool = torch.where(input_seqs[:, :, 0] == self.item_num, True, False).to(self.dev)  
-        #attention_mask = torch.tril(torch.zeros((number_baskets, number_baskets),device=self.dev).fill_(-2e15), diagonal=0)# (T, T)
         timeline_mask_float = torch.where(timeline_mask_bool, -1*(2e15), 0).to(self.dev) # (U, T) 
         seqs = self.item_emb(input_seqs)
         '''
@@ -110,7 +109,7 @@ class SASRec(torch.nn.Module):
 
         number_baskets = seqs.shape[1] 
         # causal mask
-        attention_mask = torch.tril(torch.zeros((number_baskets, number_baskets),device=self.dev).fill_(-2e15), diagonal=0)# (T, T)
+        attention_mask = torch.triu(torch.zeros((number_baskets, number_baskets),device=self.dev).fill_(-1*(2e15)), diagonal=1)# (T, T)
         # Be careful: we can only use float mask instead of byte mask here.
         # if we use byte mask and perform softmax operation on it later,
         # the output of softmax will be nan, for the following reason:
