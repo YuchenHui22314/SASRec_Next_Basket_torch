@@ -59,7 +59,10 @@ if __name__ == '__main__':
     np.random.seed(args.random_seed)
     torch.manual_seed(args.random_seed)
     if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(args.random_seed)
+        torch.cuda.manual_seed_all(args.random_seed)    
+        torch.cuda.manual_seed(args.random_seed)
+        torch.backends.cudnn.benchmark = False
+        torch.backends.cudnn.deterministic = True
 
     batches, num_user, num_item, train_dict, validate_dict, test_dict, sequences= load_dataset_batches(args)  
 
@@ -89,7 +92,10 @@ if __name__ == '__main__':
         t1 = time.time()
         train_loss = list()
         for batch in batches:
+            # !!!!!!!!!!!!!! --------------------
             adam_optimizer.zero_grad()
+            # !!!!!!!!!!!!!! --------------------
+
             # batch = [num_user, max_seq_len, max_basket_len]
             # how we adopt sasREC to NBR? we take the average of a basket as the basket embedding, which is counterpart to a "item" in SASREC
             ## TODO: concat?
@@ -100,11 +106,11 @@ if __name__ == '__main__':
             # regularization
             for param in model.parameters():
                 loss += args.l2_emb * torch.norm(param) 
+
             # !!!!!!!!!!!!!! --------------------
             loss.backward()
             adam_optimizer.step()
             # !!!!!!!!!!!!!--------------------
-            #print(loss)
             train_loss.append(loss.item())
 
         mean_epoch_loss = np.mean(train_loss)
@@ -116,12 +122,10 @@ if __name__ == '__main__':
 
         if epoch == 1 or epoch % args.N == 0:
             model.eval()
-            # for validation
-            #如果num_user大于batch_size就相当于取前batch size
-            #个user，如果num_user < batch_size, 就是取所有的
-            # num_user,是这样吗？是出于num_user太大的情况下一次
-            # evaluation的时间太长是不？
-            # answer: 是的。也是出于显存只能放一个batch 
+            # If num_user is greater than batch_size, it is taking the first batch_size
+            # users. If num_user < batch_size, it's taking all the num_user, right?
+            # Is it because evaluating too many users at once takes too long?
+            # answer: Yes. It's also because the GPU memory can only hold one batch at a time.
 
             batch_size_test = args.batch_size
             rank_list = list()

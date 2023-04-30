@@ -77,7 +77,7 @@ class SASRec(torch.nn.Module):
         # generate mask for log_seqs: cretiria: 1.size is (user_num, basket_num) 2.2. mask if the first item index is item_num. (this means the basket is a padded one)
         input_seqs = torch.LongTensor(input_seqs).to(self.dev)
         # timeline_mask的complement是要把padding的item/basket 全都置零。而其本身会喂给attention的key_padding_mask
-        #timeline_mask = torch.BoolTensor(log_seqs == 0).to(self.dev)
+        # english version: timeline_mask is the complement of the mask that set the padded item/basket to 0. timeline_mask itself will be fed to attention as key_padding_mask
         timeline_mask_bool = torch.where(input_seqs[:, :, 0] == self.item_num, True, False).to(self.dev)  
         timeline_mask_float = torch.where(timeline_mask_bool, -1*(2e15), 0).to(self.dev) # (U, T) 
         seqs = self.item_emb(input_seqs)
@@ -106,6 +106,7 @@ class SASRec(torch.nn.Module):
         seqs = self.emb_dropout(seqs)
         seqs *= ~timeline_mask_bool.unsqueeze(-1) 
         # broadcast in last dim 有必要？(有。因为变成embedding了。)
+        # english version: necessary? (yes. because it becomes embedding.)
 
         number_baskets = seqs.shape[1] 
         # causal mask

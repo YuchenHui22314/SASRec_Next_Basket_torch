@@ -8,12 +8,14 @@ def get_sequences(train_dict, validate_dict, num_item, max_seq_len, max_basket_l
     sequences = list()
     for user in train_dict:
         sequences_user = list()
-        # 把每一个basket里面都补齐到max_basket_len
-        # seuqences_user = [[1, 2, 3, 0, 0], [4, 5, 6, 7, 0], [8, 9, 10, 11, 12]]
-        # 包含了training和validation的basket
+        # Pad each basket in the sequence up to max_basket_len (to the right)
+        # sequences_user = [[1, 2, 3, 0, 0], [4, 5, 6, 7, 0], [8, 9, 10, 11, 12]] (0 is padding)
+        # This contains the baskets for both training and validation
+
         for basket in train_dict[user] + [validate_dict[user]]:
             sequences_user.append(basket + [num_item] * (max_basket_len - len(basket)))
-        # sequences 把basket的个数补齐到 max_seq_len，不够的话向左加。
+        # pad each sequence up to max_seq_len. If not enough long, pad to the left with empty baskets
+        # where empty basket is represented by [num_item] * max_basket_len 
         # why + 2?
         sequences.append([[num_item] * max_basket_len] * (max_seq_len + 2 - len(sequences_user)) + sequences_user)
     sequences = np.array(sequences, dtype=np.int32)
@@ -33,10 +35,13 @@ def get_batches(sequences, batch_size):
 
 def get_inputs_train(num_item, batch):
     # 取到倒数第二个train basket做input，因为要predict最后一个basket
+    # english version: get the second to last train basket as input, because we need to predict the last basket
     input_seq = batch[:, :-2, :]  # batch: [batch_size, train[0]...train[-2] train[-1] validate[], max_basket_len]
     # 需要预测的是这个。和train seq比向右移动了一位
+    # english version: we need to predict this. Compared with the train seq, it is shifted to the right by one bit
     pred_seq = batch[:, 1:-1, :]
 
+    # The following code is discarded for its excessive memory cost
     # if device == 'cuda':
     #     pred_seq = torch.tensor(pred_seq).long().to(device)
     #     mask = (pred_seq != 5).long().to(device)
@@ -66,8 +71,12 @@ def get_inputs_train(num_item, batch):
 
     labels_pred = list()
     for row in np.reshape(pred_seq, [-1, pred_seq.shape[-1]]):
+        # chinese version:
         # 拆成一个个basket，然后为每一个basket生成一个label 向量，
-        # 其中basket里面的item对应的位置为1，其他为0
+        # 其中basket里面有item对应的位置为1，其他为0
+        # english version:
+        # split the pred_seq into baskets, and generate a label vector for each basket
+        # the position of the item in the basket is 1, and the others are 0
         label_ = np.zeros(shape=num_item+1, dtype=np.float32)
         label_[row] = 1.0
         label_[-1] = 0.0 # the last item is padding item
