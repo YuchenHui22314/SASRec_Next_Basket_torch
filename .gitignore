@@ -9,3 +9,10 @@ test_multihot.py
 *.npy
 info.txt
 \log
+plot.py
+*.pkl
+.csv
+figures/
+calculate_sparsity.py
+*.png
+*.csv

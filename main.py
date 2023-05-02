@@ -17,7 +17,7 @@ def str2bool(s):
 parser = argparse.ArgumentParser()
 
 # setting 
-parser.add_argument('--dataset', default="metro_02")
+parser.add_argument('--dataset', default="metro_01")
 parser.add_argument('--train_dir', default = "lg")
 
 parser.add_argument('--device', default='cuda', type=str)

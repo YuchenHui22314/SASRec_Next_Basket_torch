@@ -8,8 +8,8 @@ class PointWiseFeedForward(torch.nn.Module):
         super(PointWiseFeedForward, self).__init__()
 
         self.conv1 = torch.nn.Conv1d(hidden_units, hidden_units, kernel_size=1) # equivallent to nn.linear layer
-        self.dropout1 = torch.nn.Dropout(p=dropout_rate) # dropout的位置已经成谜
-        self.relu = torch.nn.ReLU() #不是gelu吗？
+        self.dropout1 = torch.nn.Dropout(p=dropout_rate) # where should we put this dropout layer?
+        self.relu = torch.nn.ReLU() # not gelu?
         self.conv2 = torch.nn.Conv1d(hidden_units, hidden_units, kernel_size=1)
         self.dropout2 = torch.nn.Dropout(p=dropout_rate)
 
@@ -67,16 +67,15 @@ class SASRec(torch.nn.Module):
 
     def seq2embed(self, input_seqs):
         '''
-        log_seqs: (U, T) where U is user_num, T is maxlen. so this is purchase history of users
+        input_seqs: (U, T) where U is user_num, T is maxlen. so this is purchase history of users
         (item Recommendation)
-        log_seqs: (user_num, Basket_num, item_num) (next basket recommendation) 
+        input_seqs: (user_num, Basket_num, item_num) (next basket recommendation) 
         '''
         # assert the vector of padding_idx is all zeros
         #assert (self.item_emb.weight.data[self.item_num] == torch.zeros(self.hidden_units)).to(self.dev).all(), "the vector of padding_idx is not all zeros, damn it!"
 
         # generate mask for log_seqs: cretiria: 1.size is (user_num, basket_num) 2.2. mask if the first item index is item_num. (this means the basket is a padded one)
         input_seqs = torch.LongTensor(input_seqs).to(self.dev)
-        # timeline_mask的complement是要把padding的item/basket 全都置零。而其本身会喂给attention的key_padding_mask
         # english version: timeline_mask is the complement of the mask that set the padded item/basket to 0. timeline_mask itself will be fed to attention as key_padding_mask
         timeline_mask_bool = torch.where(input_seqs[:, :, 0] == self.item_num, True, False).to(self.dev)  
         timeline_mask_float = torch.where(timeline_mask_bool, -1*(2e15), 0).to(self.dev) # (U, T) 
@@ -105,8 +104,7 @@ class SASRec(torch.nn.Module):
 
         seqs = self.emb_dropout(seqs)
         seqs *= ~timeline_mask_bool.unsqueeze(-1) 
-        # broadcast in last dim 有必要？(有。因为变成embedding了。)
-        # english version: necessary? (yes. because it becomes embedding.)
+        # english version: broad cast in last dim necessary? (yes. because it becomes embedding.)
 
         number_baskets = seqs.shape[1] 
         # causal mask
@@ -129,7 +127,7 @@ class SASRec(torch.nn.Module):
             mha_outputs, _ = self.attention_layers[i](
                 Q_K_V, Q_K_V, Q_K_V, 
                 attn_mask=attention_mask,
-                key_padding_mask=timeline_mask_float, # doesn't work, because
+                key_padding_mask=timeline_mask_float, # work for torch 2.0, not for 1.12
                 # is_causal=True, 
                 )
                 # need_weights=False) this arg do not work?
@@ -152,6 +150,10 @@ class SASRec(torch.nn.Module):
 
     def forward(self, input_seqs, labels, loss_type):
         '''
+        input_seqs: (U, T) where U is user_num, T is maxlen. so this is purchase history of users
+        (item Recommendation)
+        input_seqs: (user_num, Basket_num, item_num) (next basket recommendation) 
+
         labels = [
         [1, 0,1,0], 
         [0, 1,1,1]
@@ -190,6 +192,12 @@ class SASRec(torch.nn.Module):
 
 
     def predict(self, input_seqs): # for inference
+        '''
+        input_seqs: (U, T) where U is user_num, T is maxlen. so this is purchase history of users
+        (item Recommendation)
+        input_seqs: (user_num, Basket_num, item_num) (next basket recommendation) 
+        '''
+
         with torch.no_grad():
             output_embedding , _ = self.seq2embed(input_seqs)
             logits = torch.matmul(output_embedding, self.item_emb.weight.transpose(0, 1))
