@@ -78,7 +78,7 @@ class SASRec(torch.nn.Module):
         input_seqs = torch.LongTensor(input_seqs).to(self.dev)
         # english version: timeline_mask is the complement of the mask that set the padded item/basket to 0. timeline_mask itself will be fed to attention as key_padding_mask
         timeline_mask_bool = torch.where(input_seqs[:, :, 0] == self.item_num, True, False).to(self.dev)  
-        timeline_mask_float = torch.where(timeline_mask_bool, -1*(2e15), 0).to(self.dev) # (U, T) 
+        timeline_mask_float = torch.where(timeline_mask_bool, -1*(2e32 - 1), 0).to(self.dev) # (U, T) 
         seqs = self.item_emb(input_seqs)
         '''
         tensor(
@@ -108,7 +108,7 @@ class SASRec(torch.nn.Module):
 
         number_baskets = seqs.shape[1] 
         # causal mask
-        attention_mask = torch.triu(torch.zeros((number_baskets, number_baskets),device=self.dev).fill_(-1*(2e15)), diagonal=1)# (T, T)
+        attention_mask = torch.triu(torch.zeros((number_baskets, number_baskets),device=self.dev).fill_(-1*(2e32 - 1)), diagonal=1)# (T, T)
         # Be careful: we can only use float mask instead of byte mask here.
         # if we use byte mask and perform softmax operation on it later,
         # the output of softmax will be nan, for the following reason:
@@ -176,7 +176,8 @@ class SASRec(torch.nn.Module):
             criterion = torch.nn.BCEWithLogitsLoss(reduction = "none")
             labels = torch.tensor(labels,dtype=torch.float32).to(self.dev)[:,:, :-1]
             loss= criterion(logits, labels)
-            loss = torch.sum(loss * loss_mask_logits)/ torch.sum(loss_mask_logits)
+            #loss = torch.sum(loss * loss_mask_logits)/ torch.sum(loss_mask_logits)
+            loss = torch.sum(loss * loss_mask_logits)/ torch.sum(loss_mask)
             return loss, logits
         
         elif loss_type == "softmax":
