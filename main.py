@@ -36,6 +36,9 @@ parser.add_argument("--N", type=int, default=1)
 parser.add_argument("--K", type=int, default=20)
 parser.add_argument("--lr_sched", action="store_true", default=False)
 parser.add_argument("--sig_loss_average", action="store_true", default=False)
+parser.add_argument('--adam_beta1', default = 0.9, type=float)
+parser.add_argument('--adam_beta2', default=0.999, type=float)
+
 
 
 
@@ -86,7 +89,8 @@ if __name__ == '__main__':
     # set the padding index (model.num_item) to zero, so that the padding index will not affect the loss
     model.item_emb.weight.data[model.item_num].fill_(0)
     model.train() # enable model training
-    adam_optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas=(0.9, 0.98))
+    betas = (args.adam_beta1, args.adam_beta2)
+    adam_optimizer = torch.optim.Adam(model.parameters(), lr=args.lr, betas = betas)
 
     result_train = list()
     result_validate = list()
