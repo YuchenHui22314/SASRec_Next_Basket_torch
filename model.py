@@ -173,6 +173,7 @@ class SASRec(torch.nn.Module):
         loss_mask_logits = loss_mask.unsqueeze(-1).repeat(1, 1, logits.shape[-1])
         loss_type= args.loss
         average = args.sig_loss_average
+        average6 = args.sig_loss_average6
 
         if loss_type == "sigmoid":
             criterion = torch.nn.BCEWithLogitsLoss(reduction = "none")
@@ -183,6 +184,8 @@ class SASRec(torch.nn.Module):
             loss = torch.sum(loss * loss_mask_logits) #this works similarly to the above line
             if average:
                 loss = loss /torch.sum(loss_mask)
+            elif average6:
+                loss = loss /torch.sum(loss_mask_logits)
 
             return loss, logits
         

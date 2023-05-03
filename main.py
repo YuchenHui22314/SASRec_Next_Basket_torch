@@ -36,6 +36,7 @@ parser.add_argument("--N", type=int, default=1)
 parser.add_argument("--K", type=int, default=20)
 parser.add_argument("--lr_sched", action="store_true", default=False)
 parser.add_argument("--sig_loss_average", action="store_true", default=False)
+parser.add_argument("--sig_loss_average6", action="store_true", default=False)
 parser.add_argument('--adam_beta1', default = 0.9, type=float)
 parser.add_argument('--adam_beta2', default=0.999, type=float)
 
