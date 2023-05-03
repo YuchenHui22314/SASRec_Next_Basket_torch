@@ -34,8 +34,10 @@ parser.add_argument('--num_epoch', default=200, type=int)
 parser.add_argument("--random_seed", type=int, default=2023)
 parser.add_argument("--N", type=int, default=1)
 parser.add_argument("--K", type=int, default=20)
-# stored true learning rate schedule
 parser.add_argument("--lr_sched", action="store_true", default=False)
+parser.add_argument("--sig_loss_average", action="store_true", default=False)
+
+
 
 
 # model specific hyperparameters
@@ -110,7 +112,7 @@ if __name__ == '__main__':
             # labels are used to calculate the modified softmax loss
             input_seqs, labels, _ = get_inputs_train(num_item, batch)
             loss_type = args.loss.lower() 
-            loss, logits = model(input_seqs, labels, loss_type)
+            loss, logits = model(input_seqs, labels, args)
             # regularization
             for param in model.parameters():
                 loss += args.l2_emb * torch.norm(param) 

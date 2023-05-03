@@ -148,7 +148,7 @@ class SASRec(torch.nn.Module):
         return output_embedding, ~timeline_mask_bool 
 
 
-    def forward(self, input_seqs, labels, loss_type):
+    def forward(self, input_seqs, labels, args):
         '''
         input_seqs: (U, T) where U is user_num, T is maxlen. so this is purchase history of users
         (item Recommendation)
@@ -171,6 +171,8 @@ class SASRec(torch.nn.Module):
         output, loss_mask = self.seq2embed(input_seqs)
         logits = torch.matmul(output, self.item_emb.weight[:-1].transpose(0, 1))
         loss_mask_logits = loss_mask.unsqueeze(-1).repeat(1, 1, logits.shape[-1])
+        loss_type= args.loss
+        average = args.sig_loss_average
 
         if loss_type == "sigmoid":
             criterion = torch.nn.BCEWithLogitsLoss(reduction = "none")
@@ -179,6 +181,9 @@ class SASRec(torch.nn.Module):
             #loss = torch.sum(loss * loss_mask_logits)/ torch.sum(loss_mask_logits)
             #loss = torch.sum(loss * loss_mask_logits)/ torch.sum(loss_mask)  # this works better than the above line
             loss = torch.sum(loss * loss_mask_logits) #this works similarly to the above line
+            if average:
+                loss = loss /torch.sum(loss_mask)
+
             return loss, logits
         
         elif loss_type == "softmax":
