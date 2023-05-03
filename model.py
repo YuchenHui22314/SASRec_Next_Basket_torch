@@ -177,8 +177,8 @@ class SASRec(torch.nn.Module):
             labels = torch.tensor(labels,dtype=torch.float32).to(self.dev)[:,:, :-1]
             loss= criterion(logits, labels)
             #loss = torch.sum(loss * loss_mask_logits)/ torch.sum(loss_mask_logits)
-            loss = torch.sum(loss * loss_mask_logits)/ torch.sum(loss_mask)  # this works better than the above line
-            #loss = torch.sum(loss * loss_mask_logits) this works similarly to the above line
+            #loss = torch.sum(loss * loss_mask_logits)/ torch.sum(loss_mask)  # this works better than the above line
+            loss = torch.sum(loss * loss_mask_logits) #this works similarly to the above line
             return loss, logits
         
         elif loss_type == "softmax":

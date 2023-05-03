@@ -91,10 +91,10 @@ if __name__ == '__main__':
     result_test = list()
 
     for epoch in range(1, args.num_epoch + 1):
-        if epoch > 60 and epoch % 15 == 0 and args.lr_sched:
+        if epoch >= 60 and epoch % 20 == 0 and args.lr_sched:
             # set the learning rate to the half of the current learning rate
             for param_group in adam_optimizer.param_groups:
-                param_group['lr'] = param_group['lr'] * 0.4
+                param_group['lr'] = param_group['lr'] * 0.5
 
         model.train() 
         t1 = time.time()
