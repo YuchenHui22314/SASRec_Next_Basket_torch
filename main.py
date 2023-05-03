@@ -34,6 +34,8 @@ parser.add_argument('--num_epoch', default=200, type=int)
 parser.add_argument("--random_seed", type=int, default=2023)
 parser.add_argument("--N", type=int, default=1)
 parser.add_argument("--K", type=int, default=20)
+# stored true learning rate schedule
+parser.add_argument("--lr_sched", action="store_true", default=False)
 
 
 # model specific hyperparameters
@@ -42,6 +44,7 @@ parser.add_argument('--num_blocks', default=1, type=int)
 parser.add_argument('--num_heads', default=1, type=int)
 parser.add_argument('--dropout_rate', default=0.1, type=float)
 parser.add_argument("--loss", type=str, default="softmax")  # {sigmoid, softmax}
+
 
 args = parser.parse_args()
 # save model hyperparameters and settings --------------------------------------
@@ -88,6 +91,11 @@ if __name__ == '__main__':
     result_test = list()
 
     for epoch in range(1, args.num_epoch + 1):
+        if epoch > 80 and epoch % 20 == 0 and args.lr_sched:
+            # set the learning rate to the half of the current learning rate
+            for param_group in adam_optimizer.param_groups:
+                param_group['lr'] = param_group['lr'] * 0.5
+
         model.train() 
         t1 = time.time()
         train_loss = list()
